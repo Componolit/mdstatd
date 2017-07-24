@@ -28,6 +28,16 @@ class MD(MD_Base, unittest.TestCase):
         mdfile.close()
         return data
 
+    def get_raw_mdstat(self):
+        with open("data/{}".format(self.testfile), "r") as tf:
+            return tf.read()
+
+    def get_user(self):
+        return "testuser"
+
+    def get_hostname(self):
+        return "testhostname"
+
     def test_ok(self):
         self.testfile = "mdstat.ok"
         self.load()
@@ -51,4 +61,19 @@ class MD(MD_Base, unittest.TestCase):
         self.testfile = "mdstat.error.2"
         self.load()
         self.assertEqual(2, self.determine_state())
+
+    def test_mail(self):
+        self.testfile = "mdstat.ok"
+        msg = self.generate_message("test@mail", 0)
+        self.assertTrue(msg.is_multipart())
+        self.assertTrue(bool(msg.get_payload()))
+        self.assertEqual(self.get_raw_mdstat(), msg.get_payload()[0].get_payload())
+        [self.assertIn(k, msg.keys()) for k in ['To', 'From', 'Subject']]
+        self.assertEqual(msg['To'], "test@mail")
+        self.assertEqual(msg['From'], "testuser@testhostname")
+        self.assertEqual(msg['Subject'], "mdstatc: RAID ok")
+        msg = self.generate_message("test@mail", 1)
+        self.assertEqual(msg['Subject'], "mdstatc: RAID warning")
+        msg = self.generate_message("test@mail", 2)
+        self.assertEqual(msg['Subject'], "mdstatc: RAID error")
 
